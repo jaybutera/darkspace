@@ -1,0 +1,14 @@
+[package]
+name = "darkspace"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+portaudio = "0.7"
+pasts = "0.7"
+wavy = "0.8"
+fon = "0.4"
+cpal = "0.13"
+sfml = "0.17"
