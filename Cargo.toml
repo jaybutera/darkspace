@@ -6,9 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-portaudio = "0.7"
-pasts = "0.7"
-wavy = "0.8"
-fon = "0.4"
-cpal = "0.13"
+#portaudio = "0.7"
+#pasts = "0.7"
+#wavy = "0.8"
+#fon = "0.4"
+#cpal = "0.13"
+structopt = "0.3"
+async-io = "1.7"
+darkfi = { git = "https://github.com/darkrenaissance/darkfi", features = ["net"] }
+smol-timeout = "0.6"
+bincode = "1.3"
+smol = "1.2.5"
 sfml = "0.17"
