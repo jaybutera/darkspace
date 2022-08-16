@@ -134,39 +134,6 @@ impl SoundRecorder for VoiceRecorder {
     }
 }
 
-/*
-struct ReadBuf<T, const N: usize> {
-    buf: [T; N],
-    index: usize,
-}
-
-impl<T, const N: usize> ReadBuf<T, N> {
-    /// Copy data into the ReadBuf, return the number of elements copied
-    fn read(self, data: &[T]) -> usize {
-        let size = data.len();
-
-        self.buf[self.index..].copy_from_slice(data);
-        /*
-        let mut i = 0;
-        while self.index < N {
-            buf[idx] = data[i];
-        }
-
-        if size + self.index > buf_size {
-            for i in 0..(idx - size) {
-                buf[idx] = chunk[i];
-                idx += 1;
-            }
-            tx.send(buf);
-
-            idx = 0;
-            buf[idx]
-        }
-        */
-    }
-}
-*/
-
 
 fn main() {
     /*
@@ -192,8 +159,6 @@ fn main() {
             println!("Connected to peer");
 
             const buf_size: usize = 8946;
-            let mut buf = [0; buf_size];
-            //let mut idx = 0;
             let (tx, rx) = std::sync::mpsc::channel();
 
             let mut queue = vec![];
@@ -211,22 +176,9 @@ fn main() {
             }).detach();
 
             for chunk in rx {
-                //let ser = bincode::serialize::<Vec<i16>>(&chunk).unwrap();
-                //let dec = bincode::deserialize::<Vec<i16>>(&ser).unwrap();
-                //println!("{:?}", dec);
-                //let ser_len = bincode::serialize(&(ser.len() as u32)).unwrap();
                 stream.write_all(&chunk).await.unwrap();
-                //println!("ser len: {}", ser_len.len());
-
-                //let byte_count = stream.write_all(&ser).await.unwrap();
-
                 println!("wrote {} bytes", chunk.len());
             }
-            /*
-            }.or(async {
-                smol::Timer::after(Duration::from_secs(3)).await;
-            }));
-            */
             driver.stop();
         }
         else {
@@ -235,38 +187,16 @@ fn main() {
 
             while let Some(stream) = incoming.next().await {
                 let mut stream = stream.unwrap();
-                //let decoded = stream.map(|bc| bincode::deserialize(bc));
 
                 println!("peer connected");
                 let (sec, rec) = std::sync::mpsc::channel();
-                //let msec = std::sync::Mutex::new(sec);
-                //use std::sync::{Arc, Mutex};
-                let msec = sec.clone();
-                //let msec = Arc::new(Mutex::new(sec));//std::sync::Mutex::new(std::sync::Arc::new(sec));
-                //let msec = Arc::new(sec);
                 let f_deserial = smol::spawn(async move {
                     loop {
-                        //let mut buf = vec![];
-                        //let mut ser_len_buf = [0u8; 4];
-                        //stream.read_exact(&mut ser_len_buf).await.unwrap();
-                        //let ser_len = bincode::deserialize::<u32>(&ser_len_buf).unwrap();
-
-                        //let mut buf = Vec::with_capacity(ser_len as usize);
                         const ser_buf_size: usize = 17900;
                         let mut buf = [0u8; ser_buf_size];
                         stream.read_exact(&mut buf).await.unwrap();
                         let decoded: Vec<i16> = bincode::deserialize(&buf).unwrap();
                         sec.send(decoded).unwrap();
-                    //let bytes = stream.bytes().map(|bc| ;
-                        //let decoded: Vec<i16> = bincode::deserialize(&buf).unwrap();
-                    //while let bytes = stream.read(&mut buf).await.unwrap() {
-                        //let mut buf = vec![0u8; 128];
-                        //println!("read {} bytes", ser_len);
-                        //println!("read {} bytes", stream.read(&mut buf).await.unwrap());
-                        //println!("{decoded:?}");
-                        //let decoded: Vec<i16> = bincode::deserialize(&buf).unwrap();
-                        //msec.lock().unwrap().send(decoded).unwrap();
-                        //msec.send(decoded).unwrap();
                     }
                 });
 
