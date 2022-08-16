@@ -2,7 +2,7 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "blackhole", about = "Encrypted voice communications")]
-struct Opt {
+pub struct Opt {
     #[structopt(short)]
-    call: bool,
+    pub call: bool,
 }

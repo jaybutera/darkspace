@@ -607,6 +607,7 @@ dependencies = [
  "async-io",
  "bincode 1.3.3",
  "darkfi",
+ "futures-lite",
  "sfml",
  "smol",
  "smol-timeout",
