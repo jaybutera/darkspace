@@ -134,82 +134,121 @@ impl SoundRecorder for VoiceRecorder {
     }
 }
 
+async fn bind_tcp(addr: &str) -> std::io::Result<TcpStream> {
+    let listener = TcpListener::bind(addr).await.unwrap();
+    let mut incoming = listener.incoming();
+
+    incoming.next().await.unwrap()
+}
 
 fn main() {
-    /*
     let (sc, rc) = std::sync::mpsc::channel();
     let mut rec = VoiceRecorder::new(sc, 500);
     let mut driver = SoundRecorderDriver::new(&mut rec);
-    */
 
     let opts = Opt::from_args();
 
-    //println!("Starting recording");
-    //driver.start(44100);
+    println!("Starting recording");
+    driver.start(44100);
+
+    const buf_size: usize = 8946;
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    let mut queue = vec![];
+    let rec_relay = smol::spawn(async move {
+        for chunk in rc {
+            queue.extend_from_slice(&chunk);
+
+            if queue.len() > buf_size {
+                let msg: Vec<i16> = queue.drain(0..buf_size).collect();
+                let ser = bincode::serialize(&msg).unwrap();
+                tx.send(ser).unwrap();
+            }
+        }
+    });
+
+    let addr = "127.0.0.1:8080";
 
     smol::block_on(async move {
-        if opts.call {
+        let mut stream =
+            if opts.call {
+                TcpStream::connect(addr).await
+            } else {
+                bind_tcp(addr).await
+            }.unwrap();
+        let mut stream2 = stream.clone();
+
+        //if opts.call {
+            /*
             let (sc, rc) = std::sync::mpsc::channel();
             let mut rec = VoiceRecorder::new(sc, 500);
             let mut driver = SoundRecorderDriver::new(&mut rec);
             driver.start(44100);
             println!("Starting recording");
+            */
 
+            /*
             let mut stream = TcpStream::connect("127.0.0.1:8080").await.unwrap();
             println!("Connected to peer");
-
-            const buf_size: usize = 8946;
-            let (tx, rx) = std::sync::mpsc::channel();
-
-            let mut queue = vec![];
-
-            smol::spawn(async move {
-                for chunk in rc {
-                    queue.extend_from_slice(&chunk);
-
-                    if queue.len() > buf_size {
-                        let msg: Vec<i16> = queue.drain(0..buf_size).collect();
-                        let ser = bincode::serialize(&msg).unwrap();
-                        tx.send(ser).unwrap();
-                    }
-                }
-            }).detach();
 
             for chunk in rx {
                 stream.write_all(&chunk).await.unwrap();
                 println!("wrote {} bytes", chunk.len());
             }
-            driver.stop();
-        }
-        else {
+            */
+            //driver.stop();
+        //}
+        //else {
+            /*
             let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
             let mut incoming = listener.incoming();
 
             while let Some(stream) = incoming.next().await {
                 let mut stream = stream.unwrap();
+                //let mut stream2 = stream.clone();
+                */
 
-                println!("peer connected");
-                let (sec, rec) = std::sync::mpsc::channel();
-                let f_deserial = smol::spawn(async move {
-                    loop {
-                        const ser_buf_size: usize = 17900;
-                        let mut buf = [0u8; ser_buf_size];
-                        stream.read_exact(&mut buf).await.unwrap();
-                        let decoded: Vec<i16> = bincode::deserialize(&buf).unwrap();
-                        sec.send(decoded).unwrap();
-                    }
-                });
-
-                let mut voice_player = VoicePlayer::new(rec, 44100);
-                let mut player = SoundStreamPlayer::new(&mut voice_player);
-                player.play();
-                println!("playing");
-                f_deserial.await
+        println!("peer connected");
+        let (sec, rec) = std::sync::mpsc::channel();
+        let f_deserial = smol::spawn(async move {
+            println!("kek");
+            loop {
+                const ser_buf_size: usize = 17900;
+                let mut buf = [0u8; ser_buf_size];
+                stream.read_exact(&mut buf).await.unwrap();
+                let decoded: Vec<i16> = bincode::deserialize(&buf).unwrap();
+                println!("sending decoded");
+                sec.send(decoded).unwrap();
             }
-        }
+        });
+
+        let write_stream = smol::spawn(async move {
+            for chunk in rx {
+                stream2.write_all(&chunk).await.unwrap();
+                println!("wrote {} bytes", chunk.len());
+            }
+        });
+
+        let mut voice_player = VoicePlayer::new(rec, 44100);
+        let mut player = SoundStreamPlayer::new(&mut voice_player);
+        player.play();
+        println!("playing");
+
+
+        rec_relay.or(f_deserial).or(write_stream).await;
+            println!("wtf");
+                /*
+                for chunk in &rx {
+                    stream2.write_all(&chunk).await.unwrap();
+                    println!("wrote {} bytes", chunk.len());
+                }
+                */
+                //smol::block_on(smol::future::pending::<()>());
+            //}
+        //}
     });
 
-    //driver.stop();
+    driver.stop();
     /*
     println!("Recorded audio");
     println!("Playing back..");
