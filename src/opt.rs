@@ -5,4 +5,8 @@ use structopt::StructOpt;
 pub struct Opt {
     #[structopt(short)]
     pub call: bool,
+
+    /// Address to connect with, of the form <ip>:<port> i.e. 127.0.0.1:8080
+    #[structopt(short, long)]
+    pub address: String,
 }

@@ -168,7 +168,7 @@ fn main() {
         }
     });
 
-    let addr = "127.0.0.1:8080";
+    let addr = &opts.address;//"127.0.0.1:8080";
 
     let mut stream = smol::block_on(async move {
         if opts.call {
