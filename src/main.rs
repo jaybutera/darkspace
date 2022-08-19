@@ -24,7 +24,7 @@ use smol::{
     net::{TcpStream, TcpListener},
     io::AsyncWriteExt,
 };
-//use async_io::Timer;
+use async_io::Timer;
 
 // Std.
 use std::collections::VecDeque;
@@ -141,6 +141,53 @@ async fn bind_tcp(addr: &str) -> std::io::Result<TcpStream> {
     incoming.next().await.unwrap()
 }
 
+use smol::net::UdpSocket;
+async fn send_pings(sock: UdpSocket, addr: &str) {
+    loop {
+        //println!("{:?}", sock.send(b"hades").await);
+        sock.send(b"hades").await;
+        Timer::after(Duration::from_millis(1000)).await;
+        //println!("try again");
+    }
+}
+
+async fn echo(socket: UdpSocket) {
+    let mut buf = [0; 4096];
+    //loop {
+        let sock = socket.clone();
+        println!("recv1 {:?}", socket.recv_from(&mut buf).await);
+        match socket.recv_from(&mut buf).await {
+            Ok((amt, src)) => {
+                //smol::spawn(async move {
+                //thread::spawn(move || {
+                    println!("Handling connection from {}", &src);
+                    let buf = &mut buf[..amt];
+                    buf.reverse();
+                    println!("echoing");
+                    sock.send_to(&buf, &src).await.expect("error sending");
+                    println!("eh?");
+                //}).detach();
+            },
+            Err(err) => {
+                eprintln!("Err: {}", err);
+            }
+        }
+    //}
+}
+
+async fn listen_for_connection(sock: UdpSocket) {
+    let mut buf = [0; 5];
+    while let byte_count = sock.recv(&mut buf).await {
+        //if buf[..byte_count] == b"hermes" {
+        println!("count: {byte_count:?}");
+        if &buf == b"hades" {
+            println!("Thank Thoth!");
+            break;
+        }
+    }
+}
+
+
 fn main() {
     let (sc, rc) = std::sync::mpsc::channel();
     let mut rec = VoiceRecorder::new(sc, 500);
@@ -148,6 +195,7 @@ fn main() {
 
     let opts = Opt::from_args();
 
+    /*
     println!("Starting recording");
     driver.start(44100);
 
@@ -167,9 +215,39 @@ fn main() {
             }
         }
     });
+    */
 
     let addr = &opts.address;//"127.0.0.1:8080";
 
+    //let sock = smol::unblock(|| UdpSocket::bind(&opts.from));
+
+    smol::block_on(async move {
+        let sock = UdpSocket::bind(&opts.from).await.unwrap();
+        sock.connect(addr).await.unwrap();
+
+        //if opts.call {
+        let mut buf = [0; 8];
+        println!("local: {:?}", sock.local_addr());
+        println!("peer: {:?}", sock.peer_addr());
+        //println!("awaiting udp packet..");
+
+        println!("{:?}", sock.send(b"freedom").await);
+        //sock.recv(&mut buf).await.unwrap();
+        //println!("{buf:?}");
+        //send_pings(sock.clone(), addr)
+        //    .or(async { sock.recv_from(&mut buf).await.unwrap(); println!("heyo"); }).await;
+        //println!("got it!");
+        //} else {
+
+        send_pings(sock.clone(), addr)
+            .or(listen_for_connection(sock)).await
+
+        //echo(sock.clone()).await
+            //.and(async { println!("{:?}", sock.recv_from(&mut buf).await.unwrap()); }).await;
+        //}
+    });
+
+    /*
     let mut stream = smol::block_on(async move {
         if opts.call {
             TcpStream::connect(addr).await
@@ -182,25 +260,29 @@ fn main() {
 
     println!("peer connected");
     let (sec, rec) = std::sync::mpsc::channel();
-    let f_deserial = smol::spawn(async move {
+    //let f_deserial = smol::spawn(async move {
+    let f_deserial = async move {
         println!("kek");
         loop {
             const ser_buf_size: usize = 17900;
             let mut buf = [0u8; ser_buf_size];
             stream.read_exact(&mut buf).await.unwrap();
             let decoded: Vec<i16> = bincode::deserialize(&buf).unwrap();
-            println!("sending decoded");
+            //println!("sending decoded");
             sec.send(decoded).unwrap();
         }
-    });
+    };
+    //});
 
-    let write_stream = smol::unblock(|| smol::block_on(async move {
+    //let write_stream = smol::unblock(|| smol::block_on(async move {
+    let write_stream = async move {
         println!("write stream task init");
         for chunk in rx {
             stream2.write_all(&chunk).await.unwrap();
-            println!("wrote {} bytes", chunk.len());
+            //println!("wrote {} bytes", chunk.len());
         }
-    }));
+    };
+    //}));
 
     let mut voice_player = VoicePlayer::new(rec, 44100);
     let mut player = SoundStreamPlayer::new(&mut voice_player);
@@ -214,6 +296,7 @@ fn main() {
     });
 
     driver.stop();
+    */
     /*
     println!("Recorded audio");
     println!("Playing back..");
